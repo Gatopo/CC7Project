@@ -2,6 +2,8 @@ package nachos.threads;
 
 import nachos.machine.*;
 
+import java.util.ArrayList;
+
 /**
  * A KThread is a thread that can be used to execute Nachos kernel code. Nachos
  * allows multiple threads to run concurrently.
@@ -275,13 +277,19 @@ public class KThread {
     public void join() {
 	Lib.debug(dbgThread, "Joining to thread: " + toString());
 	Lib.assertTrue(this != currentThread);
-    Machine.interrupt().disabled();
-    KThread waitingThread = currentThread;
+    /** Save the status so we do not sleep with interrupts disabled**/
+    boolean status = Machine.interrupt().disable();
+    if (this.status != statusFinished) {
+        joinedKThreads.add(this);
+        this.sleep();
+    }
+    /*KThread waitingThread = currentThread;
     currentThread.sleep();
     Machine.interrupt().enable();
     while(currentThread.status != statusFinished);
     currentThread = waitingThread;
-    currentThread.ready();
+    currentThread.ready();*/
+    Machine.interrupt().restore(status);
     }
 
     /**
@@ -387,29 +395,47 @@ public class KThread {
     }
 
     private static class PingTest implements Runnable {
-	PingTest(int which) {
-	    this.which = which;
-	}
-	
-	public void run() {
-	    for (int i=0; i<5; i++) {
-		System.out.println("*** thread " + which + " looped "
-				   + i + " times");
-		currentThread.yield();
-	    }
-	}
+        PingTest(int which) {
+            this.which = which;
+        }
 
-	private int which;
+        public void run() {
+            for (int i=0; i<5; i++) {
+            System.out.println("*** thread " + which + " looped " + i + " times");
+            if ((which == 1) && (i==0))
+                ThreadedKernel.alarm.waitUntil(1000);
+            if ((which == 1) && (i==1))
+                dos.join();
+            if ((which == 0) && (i==2))
+                dos.join();
+            if ((which == 2) && (i==3))
+                tres.join();
+            if ((which == 1) && (i==3))
+                dos.join();
+            currentThread.yield();
+            }
+        }
+
+        private int which;
     }
 
     /**
      * Tests whether this module is working.
      */
     public static void selfTest() {
-	Lib.debug(dbgThread, "Enter KThread.selfTest");
+	/*Lib.debug(dbgThread, "Enter KThread.selfTest");
 	
 	new KThread(new PingTest(1)).setName("forked thread").fork();
-	new PingTest(0).run();
+	new PingTest(0).run();*/
+    Lib.debug(dbgThread, "Enter KThread.selfTest");
+    cero = new KThread(new PingTest(0)).setName("forked thread0");
+    cero.fork();
+    uno = new KThread(new PingTest(1)).setName("forked thread1");
+    uno.fork();
+    dos = new KThread(new PingTest(2)).setName("forked thread2");
+    dos.fork();
+    tres = new KThread(new PingTest(3)).setName("forked thread3");
+    tres.fork();
     }
 
     private static final char dbgThread = 't';
@@ -445,8 +471,17 @@ public class KThread {
     /** Number of times the KThread constructor was called. */
     private static int numCreated = 0;
 
+    /** List of joined KThreads */
+    private ArrayList<KThread> joinedKThreads = new ArrayList<KThread>();
+
     private static ThreadQueue readyQueue = null;
     private static KThread currentThread = null;
     private static KThread toBeDestroyed = null;
     private static KThread idleThread = null;
+
+    /** Threads to be tested on join*/
+    public static KThread tres = null;
+    public static KThread uno = null;
+    public static KThread dos = null;
+    public static KThread cero = null;
 }
