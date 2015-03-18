@@ -1,9 +1,6 @@
 *.jar
 *.war
 *.ear
-*.iml
 *.ipr
 *.class
-.project
-.settings
 stat.file

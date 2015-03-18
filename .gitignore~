@@ -4,7 +4,4 @@
 *.iml
 *.ipr
 *.class
-.idea
-.project
-.settings
 stat.file
