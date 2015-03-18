@@ -17,6 +17,12 @@ public class Communicator {
         communicatorLock = new Lock();
         conditionListener = new Condition2(communicatorLock);
         conditionSpeaker = new Condition2(communicatorLock);
+        waitForListener = new Condition2(communicatorLock);
+        waitForSpeaker = new Condition2(communicatorLock);
+        message = 0;
+        isListening = false;
+        isSpeaking = false;
+        messageIsReady = false;
     }
 
     /**
@@ -31,6 +37,16 @@ public class Communicator {
      */
     public void speak(int word) {
         communicatorLock.acquire();
+        while(isSpeaking)
+            conditionSpeaker.sleep();
+        isSpeaking = true;
+        waitForSpeaker.wakeAll();
+        while(!isListening)
+            waitForListener.sleep();        
+        message = word;
+        messageIsReady = true;
+        waitForSpeaker.wakeAll();
+        isSpeaking = false;    
         communicatorLock.release();
     }
 
@@ -42,12 +58,26 @@ public class Communicator {
      */    
     public int listen() {
         communicatorLock.acquire();
+        while(isListening)
+            conditionListener.sleep();
+        isListening = true;
+        waitForListener.wakeAll();
+        while(!isSpeaking || !messageIsReady)
+            waitForSpeaker.sleep();
+        int wordReaded = message;
+        messageIsReady = false;
+        isListening = false;
         communicatorLock.release();
-	return 0;
+	return wordReaded;
     }
 
     private Lock communicatorLock;
     private Condition2 conditionListener;
     private Condition2 conditionSpeaker;
+    private Condition2 waitForListener;
+    private Condition2 waitForSpeaker;
     private int message;
+    private boolean isListening;
+    private boolean isSpeaking;
+    private boolean messageIsReady;
 }
