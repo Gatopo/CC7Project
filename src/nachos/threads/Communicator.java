@@ -51,7 +51,6 @@ public class Communicator {
         }
         message = word;
         messageIsReady = true;
-        //System.out.println("+++++++ THE MESSAGE IS: " + word);
         waitForSpeaker.wake();
         while(!messageReaded){
             waitForSpeaker.wake();
@@ -85,7 +84,6 @@ public class Communicator {
             waitForSpeaker.sleep();
         }
         int wordReaded = message;
-        //System.out.println("------- MESSAGE RECEIVED : " + wordReaded);
         messageReaded = true;        
         waitForListener.wake();
         while(!messageComplete){
