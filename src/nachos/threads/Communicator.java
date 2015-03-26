@@ -15,11 +15,10 @@ public class Communicator {
      */
     public Communicator() {
         communicatorLock = new Lock();
-        busyListener = new Condition(communicatorLock);
-        busySpeaker = new Condition(communicatorLock);
-        waitForListener = new Condition(communicatorLock);
-        waitForSpeaker = new Condition(communicatorLock);
-        waitForRead = new Condition(communicatorLock);
+        busyListener = new Condition2(communicatorLock);
+        busySpeaker = new Condition2(communicatorLock);
+        waitForListener = new Condition2(communicatorLock);
+        waitForSpeaker = new Condition2(communicatorLock);
         message = 0;
         isListening = false;
         isSpeaking = false;
@@ -102,11 +101,10 @@ public class Communicator {
     }
 
     private Lock communicatorLock;
-    private Condition busyListener;
-    private Condition busySpeaker;
-    private Condition waitForListener;
-    private Condition waitForSpeaker;
-    private Condition waitForRead;
+    private Condition2 busyListener;
+    private Condition2 busySpeaker;
+    private Condition2 waitForListener;
+    private Condition2 waitForSpeaker;
     private int message;
     private boolean isListening;
     private boolean isSpeaking;
