@@ -187,12 +187,14 @@ public class KThread {
 	Lib.debug(dbgThread, "Finishing thread: " + currentThread.toString());
 	
 	Machine.interrupt().disable();
-
+        for (int i = 0; i < currentThread.joinedKThreads.size(); i++){
+            KThread joinedThread = currentThread.joinedKThreads.remove(i);
+            joinedThread.ready();
+        }
 	Machine.autoGrader().finishingCurrentThread();
 
 	Lib.assertTrue(toBeDestroyed == null);
 	toBeDestroyed = currentThread;
-
 
 	currentThread.status = statusFinished;
 	
@@ -280,8 +282,8 @@ public class KThread {
     /** Save the status so we do not sleep with interrupts disabled**/
     boolean status = Machine.interrupt().disable();
     if (this.status != statusFinished) {
-        joinedKThreads.add(this);
-        this.sleep();
+        joinedKThreads.add(currentThread);
+        currentThread.sleep();
     }
     /*KThread waitingThread = currentThread;
     currentThread.sleep();
@@ -418,6 +420,8 @@ public class KThread {
 
         private int which;
     }
+
+
 
     /**
      * Tests whether this module is working.

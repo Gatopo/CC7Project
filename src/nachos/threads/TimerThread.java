@@ -20,6 +20,7 @@ public class TimerThread implements Comparable<TimerThread> {
 
     @Override
     public int compareTo(TimerThread nextTimerThread) {
+        System.out.println("COMPARE TO: " + nextTimerThread.timerThread);
         return this.timerThread.compareTo(nextTimerThread.timerThread);
     }
 }

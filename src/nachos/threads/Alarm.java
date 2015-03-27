@@ -47,11 +47,19 @@ public class Alarm {
      * @see	nachos.machine.Timer#getTime()
      */
     public void waitUntil(long x) {
-	// for now, cheat just to get something working (busy waiting is bad)
-	long wakeTime = Machine.timer().getTime() + x;
-	while (wakeTime > Machine.timer().getTime())
-	    KThread.yield();
+        // Implementation of waitUntil using Java PriorityQue, for this
+        // TimerThread was implemented to order the threads.
+        Machine.interrupt().disable();
+        Long wakeTime = Machine.timer().getTime() + x;
+        KThread calledThread = KThread.currentThread();
+        TimerThread timerThread = new TimerThread(wakeTime, calledThread);
+        waitingThreads.add(timerThread);
+        Machine.interrupt().enable();
+        calledThread.sleep();
+        /*while (wakeTime > Machine.timer().getTime())
+            KThread.yield();
+        }*/
     }
 
-    private PriorityQueue waitingThreads = new PriorityQueue();
+    private PriorityQueue<TimerThread> waitingThreads = new PriorityQueue<TimerThread>();
 }
