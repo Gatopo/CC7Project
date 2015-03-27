@@ -6,20 +6,23 @@ package nachos.threads;
  * TimerThread Description
  * --------------------------
  * This class is a helper class for the implementation of the Alarm waitUntil().
- * It stores the thread with its timer and implements the compareTo method from the Comparable int.
+ * It's an object that has the KThread and it's timer in one single place.
  *
  */
-public class TimerThread implements Comparable<TimerThread> {
+public class TimerThread{
     private Long timerThread;
     private KThread waitingThread;
 
-    public TimerThread(Long timerThread, KThread waitingThread){
-        this.timerThread = timerThread;
+    public TimerThread(KThread waitingThread, Long timerThread){
         this.waitingThread = waitingThread;
+        this.timerThread = timerThread;
     }
 
-    @Override
-    public int compareTo(TimerThread nextTimerThread) {
-        return this.timerThread.compareTo(nextTimerThread.timerThread);
+    public KThread getWaitingKThread(){
+        return waitingThread;
     }
+    public Long getWaitingTimer(){
+        return timerThread;
+    }
+
 }
