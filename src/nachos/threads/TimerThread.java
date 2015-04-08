@@ -13,7 +13,7 @@ public class TimerThread implements Comparable<TimerThread> {
     private Long timerThread;
     private KThread waitingThread;
 
-    public void TimerThread(Long timerThread, KThread waitingThread){
+    public TimerThread(Long timerThread, KThread waitingThread){
         this.timerThread = timerThread;
         this.waitingThread = waitingThread;
     }
