@@ -32,10 +32,10 @@ public class Alarm {
         Long machineTime = Machine.timer().getTime();
         for (int i = 0; i < waitingThreads.size(); i++){
             TimerThread waitingThread = waitingThreads.get(i);
-            System.out.println("DOING SOMWTHING WITH: " + machineTime);
-            System.out.println("WAITING TO: " +  waitingThread.getWaitingTimer());
+            //System.out.println("DOING SOMWTHING WITH: " + machineTime);
+            //System.out.println("WAITING TO: " +  waitingThread.getWaitingTimer());
             if (machineTime >= waitingThread.getWaitingTimer()){
-                System.out.println("DOING SOMETHING");
+                //System.out.println("DOING SOMETHING");
                 KThread wakeThread = waitingThread.getWaitingKThread();
                 waitingThreads.remove(i);
                 wakeThread.ready();
