@@ -184,19 +184,21 @@ public class KThread {
      * delete this thread.
      */
     public static void finish() {
-	Lib.debug(dbgThread, "Finishing thread: " + currentThread.toString());
-	
-	Machine.interrupt().disable();
+        Lib.debug(dbgThread, "Finishing thread: " + currentThread.toString());
 
-	Machine.autoGrader().finishingCurrentThread();
+        Machine.interrupt().disable();
+        for (int i = 0; i < currentThread.joinedKThreads.size(); i++){
+            KThread joinedThread = currentThread.joinedKThreads.remove(i);
+            joinedThread.ready();
+        }
+        Machine.autoGrader().finishingCurrentThread();
 
-	Lib.assertTrue(toBeDestroyed == null);
-	toBeDestroyed = currentThread;
+        Lib.assertTrue(toBeDestroyed == null);
+        toBeDestroyed = currentThread;
 
+        currentThread.status = statusFinished;
 
-	currentThread.status = statusFinished;
-	
-	sleep();
+        sleep();
     }
 
     /**
@@ -280,7 +282,7 @@ public class KThread {
     /** Save the status so we do not sleep with interrupts disabled**/
     boolean status = Machine.interrupt().disable();
     if (this.status != statusFinished) {
-        joinedKThreads.add(this);
+        joinedKThreads.add(currentThread);
         this.sleep();
     }
     /*KThread waitingThread = currentThread;
