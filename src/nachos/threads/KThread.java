@@ -413,6 +413,24 @@ public class KThread {
             if ((which == 1) && (i==3))
                 dos.join();
             currentThread.yield();
+            if (AlarmTest) {
+
+                if ((which==2) && (i==0)) {
+
+                    long time=1080;
+                    System.out.println("** "+dos.getName()+" esperara al menos "+time+" ticks, despertara aprox. en "+(Machine.timer().getTime()+time));
+                    ThreadedKernel.alarm.waitUntil(time);
+
+                }
+
+                if ((which==3) && (i==1)) {
+
+                    long time=540;
+                    System.out.println("** "+tres.getName()+" esperara al menos "+time+" ticks, despertara aprox. en "+(Machine.timer().getTime()+time));
+                    ThreadedKernel.alarm.waitUntil(time);
+
+                }
+            }
             }
         }
 
@@ -427,6 +445,8 @@ public class KThread {
 	
 	new KThread(new PingTest(1)).setName("forked thread").fork();
 	new PingTest(0).run();*/
+
+        /*
     Lib.debug(dbgThread, "Enter KThread.selfTest");
     cero = new KThread(new PingTest(0)).setName("forked thread0");
     cero.fork();
@@ -435,7 +455,9 @@ public class KThread {
     dos = new KThread(new PingTest(2)).setName("forked thread2");
     dos.fork();
     tres = new KThread(new PingTest(3)).setName("forked thread3");
-    tres.fork();
+    tres.fork();*/
+        Communicator communicator = new Communicator();
+        communicator.selfTest();
     }
 
     private static final char dbgThread = 't';
@@ -484,4 +506,7 @@ public class KThread {
     public static KThread uno = null;
     public static KThread dos = null;
     public static KThread cero = null;
+
+    public static boolean AlarmTest = true;
+
 }

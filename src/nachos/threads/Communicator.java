@@ -71,6 +71,46 @@ public class Communicator {
 	return wordReaded;
     }
 
+    //*** EVERYTHING BELOW HERE IS JUST FOR TESTING ***
+    private static class CommunicatorSendTest implements Runnable {
+        private String name;
+        private Communicator communicator;
+        private int word;
+        CommunicatorSendTest(String name, Communicator communicator, int word) {
+            this.name=name;
+            this.communicator=communicator;
+            this.word=word;
+        }
+
+        public void run() {
+            System.out.println("*** " + name + " ===> Before call to speak with " + word);
+            communicator.speak(word);
+            System.out.println("*** " + name + " ===> After call to speak with " + word);
+        }
+    }
+    private static class CommunicatorListenTest implements Runnable {
+        private String name;
+        private Communicator communicator;
+        CommunicatorListenTest(String name, Communicator communicator) {
+            this.name=name;
+            this.communicator=communicator;
+        }
+
+        public void run() {
+            System.out.println("*** " + name + " ===> Before call to listen.");
+            int word=communicator.listen();
+            System.out.println("*** " + name + " ===> After call to listen. Received " + word);
+        }
+    }
+    public static void selfTest() {
+        // Communicator Tests
+        Communicator communicator = new Communicator();
+        new KThread(new CommunicatorSendTest("one",communicator,10)).fork();
+        new KThread(new CommunicatorSendTest("two",communicator,20)).fork();
+        new KThread(new CommunicatorListenTest("one",communicator)).fork();
+        new KThread(new CommunicatorListenTest("two",communicator)).fork();
+    }
+
     private Lock communicatorLock;
     private Condition2 conditionListener;
     private Condition2 conditionSpeaker;
