@@ -2,7 +2,7 @@ package nachos.threads;
 
 import nachos.machine.*;
 
-import java.util.ArrayList;
+import java.util.PriorityQueue;
 
 /**
  * Uses the hardware timer to provide preemption, and to allow threads to sleep
@@ -17,9 +17,9 @@ public class Alarm {
      * alarm.
      */
     public Alarm() {
-        Machine.timer().setInterruptHandler(new Runnable() {
-            public void run() { timerInterrupt(); }
-        });
+	Machine.timer().setInterruptHandler(new Runnable() {
+		public void run() { timerInterrupt(); }
+	    });
     }
 
     /**
@@ -29,20 +29,7 @@ public class Alarm {
      * that should be run.
      */
     public void timerInterrupt() {
-        Long machineTime = Machine.timer().getTime();
-        for (int i = 0; i < waitingThreads.size(); i++){
-            TimerThread waitingThread = waitingThreads.get(i);
-            System.out.println("DOING SOMWTHING WITH: " + machineTime);
-            System.out.println("WAITING TO: " +  waitingThread.getWaitingTimer());
-            if (machineTime >= waitingThread.getWaitingTimer()){
-                //System.out.println("DOING SOMETHING");
-                KThread wakeThread = waitingThread.getWaitingKThread();
-                waitingThreads.remove(i);
-                wakeThread.ready();
-            }
-        }
-        KThread.currentThread().yield();
-
+	KThread.currentThread().yield();
     }
 
     /**
@@ -63,16 +50,16 @@ public class Alarm {
         // Implementation of waitUntil using Java PriorityQue, for this
         // TimerThread was implemented to order the threads.
         Machine.interrupt().disable();
-        Long machineTime = Machine.timer().getTime() + x;
+        Long wakeTime = Machine.timer().getTime() + x;
         KThread calledThread = KThread.currentThread();
-        TimerThread timerThread = new TimerThread(calledThread, machineTime);
+        TimerThread timerThread = new TimerThread(wakeTime, calledThread);
         waitingThreads.add(timerThread);
-        calledThread.sleep();
         Machine.interrupt().enable();
+        calledThread.sleep();
         /*while (wakeTime > Machine.timer().getTime())
             KThread.yield();
         }*/
     }
 
-    private ArrayList<TimerThread> waitingThreads = new ArrayList<TimerThread>();
+    private PriorityQueue<TimerThread> waitingThreads = new PriorityQueue<TimerThread>();
 }
