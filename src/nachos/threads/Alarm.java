@@ -32,12 +32,15 @@ public class Alarm {
     public void timerInterrupt() {
         Long machineTime = Machine.timer().getTime();
         for (int i = 0; i < waitingThreads.size(); i++){
-            TimerThread waitingThread = waitingThreads.remove(i);
+            TimerThread waitingThread = waitingThreads.get(i);
             System.out.println("DOING SOMWTHING WITH: " + machineTime);
             System.out.println("WAITING TO: " +  waitingThread.getWaitingTimer());
             if (machineTime >= waitingThread.getWaitingTimer()){
                 System.out.println("DOING SOMETHING");
+                waitingThread = waitingThreads.get(i);
                 KThread wakeThread = waitingThread.getWaitingKThread();
+                waitingThread = waitingThreads.remove(i);
+
                 wakeThread.ready();
             }
         }
