@@ -446,7 +446,7 @@ public class KThread {
 	new KThread(new PingTest(1)).setName("forked thread").fork();
 	new PingTest(0).run();*/
 
-        /*
+
     Lib.debug(dbgThread, "Enter KThread.selfTest");
     cero = new KThread(new PingTest(0)).setName("forked thread0");
     cero.fork();
@@ -455,9 +455,9 @@ public class KThread {
     dos = new KThread(new PingTest(2)).setName("forked thread2");
     dos.fork();
     tres = new KThread(new PingTest(3)).setName("forked thread3");
-    tres.fork();*/
-        Communicator communicator = new Communicator();
-        communicator.selfTest();
+    tres.fork();
+      /*  Communicator communicator = new Communicator();
+        communicator.selfTest();*/
     }
 
     private static final char dbgThread = 't';
@@ -507,6 +507,6 @@ public class KThread {
     public static KThread dos = null;
     public static KThread cero = null;
 
-    public static boolean AlarmTest = true;
+    public static boolean AlarmTest = false;
 
 }
