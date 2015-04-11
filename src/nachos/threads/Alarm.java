@@ -2,6 +2,7 @@ package nachos.threads;
 
 import nachos.machine.*;
 
+import java.util.ArrayList;
 import java.util.PriorityQueue;
 
 /**
@@ -29,7 +30,22 @@ public class Alarm {
      * that should be run.
      */
     public void timerInterrupt() {
-	KThread.currentThread().yield();
+        Long machineTime = Machine.timer().getTime();
+        for (int i = 0; i < waitingThreads.size(); i++){
+            TimerThread waitingThread = waitingThreads.get(i);
+            System.out.println("DOING SOMWTHING WITH: " + machineTime);
+            System.out.println("WAITING TO: " +  waitingThread.getWaitingTimer());
+            if (machineTime >= waitingThread.getWaitingTimer()){
+                System.out.println("DOING SOMETHING");
+                waitingThread = waitingThreads.get(i);
+                KThread wakeThread = waitingThread.getWaitingKThread();
+                waitingThread = waitingThreads.remove(i);
+
+                wakeThread.ready();
+            }
+        }
+        KThread.currentThread().yield();
+
     }
 
     /**
@@ -50,9 +66,9 @@ public class Alarm {
         // Implementation of waitUntil using Java PriorityQue, for this
         // TimerThread was implemented to order the threads.
         Machine.interrupt().disable();
-        Long wakeTime = Machine.timer().getTime() + x;
+        Long machineTime = Machine.timer().getTime() + x;
         KThread calledThread = KThread.currentThread();
-        TimerThread timerThread = new TimerThread(wakeTime, calledThread);
+        TimerThread timerThread = new TimerThread(calledThread, machineTime);
         waitingThreads.add(timerThread);
         Machine.interrupt().enable();
         calledThread.sleep();
@@ -61,5 +77,5 @@ public class Alarm {
         }*/
     }
 
-    private PriorityQueue<TimerThread> waitingThreads = new PriorityQueue<TimerThread>();
+    private ArrayList<TimerThread> waitingThreads = new ArrayList<TimerThread>();
 }
