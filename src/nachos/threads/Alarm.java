@@ -36,14 +36,15 @@ public class Alarm {
             //System.out.println("DOING SOMWTHING WITH: " + machineTime);
             //System.out.println("WAITING TO: " +  waitingThread.getWaitingTimer());
             if (machineTime >= waitingThread.getWaitingTimer()){
-                waitingThread = waitingThreads.get(i);
+                //waitingThread = waitingThreads.get(i);
                 KThread wakeThread = waitingThread.getWaitingKThread();
                 waitingThreads.remove(i);
-
+                i--;
                 wakeThread.ready();
+
             }
         }
-        KThread.currentThread().yield();
+        //KThread.currentThread().yield();
 
     }
 
@@ -64,13 +65,15 @@ public class Alarm {
     public void waitUntil(long x) {
         // Implementation of waitUntil using Java PriorityQue, for this
         // TimerThread was implemented to order the threads.
-        Machine.interrupt().disable();
+        boolean status = Machine.interrupt().disable();
         Long machineTime = Machine.timer().getTime() + x;
         KThread calledThread = KThread.currentThread();
         TimerThread timerThread = new TimerThread(calledThread, machineTime);
-        waitingThreads.add(timerThread);
-        calledThread.sleep();
-        Machine.interrupt().enable();
+
+            waitingThreads.add(timerThread);
+            calledThread.sleep();
+
+        Machine.interrupt().restore(status);
         /*while (wakeTime > Machine.timer().getTime())
             KThread.yield();
         }*/

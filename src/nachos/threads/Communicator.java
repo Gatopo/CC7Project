@@ -132,7 +132,7 @@ public class Communicator {
     public static void selfTest() {
         // Communicator Tests
         Communicator communicator = new Communicator();
-        new KThread(new CommunicatorSendTest("one",communicator,10)).fork();
+        //new KThread(new CommunicatorSendTest("one",communicator,10)).fork();
         new KThread(new CommunicatorSendTest("two",communicator,20)).fork();
         new KThread(new CommunicatorListenTest("one",communicator)).fork();
         new KThread(new CommunicatorListenTest("two",communicator)).fork();
