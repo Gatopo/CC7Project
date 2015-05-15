@@ -454,6 +454,27 @@ public class UserProcess {
     }
 
     /**
+     * Handle close(fileDescriptor) System Call
+     */
+    private int handleClose(int fileDescriptor) {
+        if (fileDescriptor > -1) {
+            if (fileDescriptorTable.containsKey(fileDescriptor)){
+                OpenFile file = fileDescriptorTable.get(fileDescriptor);
+                if (file != null) {
+                    file = fileDescriptorTable.remove(fileDescriptor);
+                    fileDescriptorsList.add(fileDescriptor);
+                    file.close();
+                }
+            } else {
+                System.out.println("Error in Syscall Close, file descriptor not found or file does not exist");
+                return -1;
+            }
+
+        }
+        return -1;
+    }
+
+    /**
      * Handle unlink(name) System Call
      */
     private int handleUnlink(int fileNameAddr){
@@ -516,6 +537,8 @@ public class UserProcess {
             return handleRead(a0, a1, a2);
         case syscallWrite:
             return  handleWrite(a0, a1, a2);
+        case syscallClose:
+            return handleClose(a0);
         default:
             Lib.debug(dbgProcess, "Unknown syscall");
             Lib.assertNotReached("Unknown system call!");
