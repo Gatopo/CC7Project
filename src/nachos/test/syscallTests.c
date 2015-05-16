@@ -8,15 +8,19 @@ char buf[BUFSIZE];
 
 int main(int argc, char** argv)
 {
-  int fd, amount;
+    char tkn[10];
 
-int unlinkFile = 0;
-	creat("helloTest.txt");
-	int fd = open("helloTest.txt");
+    strcpy( tkn, "Mario" );
+
+	//creat("haloWOrld.txt");
+	int fd = open("haloWOrld.txt");
 	if (fd > -1)
 	{
-		read(fd, buf, 2067);
-		write(1, buf, 2067);
+		read(fd, buf, 4);
+		printf("%s DEBUGGING BUFFER",buf);
+		write(fd, tkn, 4);
+		close(fd);
+
 	}
 	return 0;
 }

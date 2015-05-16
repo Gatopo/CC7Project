@@ -55,7 +55,7 @@ public class UserProcess {
      * @return	<tt>true</tt> if the program was successfully executed.
      */
     public boolean execute(String name, String[] args) {
-        System.out.println("<DEBUGGING> NAME IS: " + name);
+        //System.out.println("<DEBUGGING> NAME IS: " + name);
 	if (!load(name, args))
 	    return false;
 	
@@ -363,7 +363,7 @@ public class UserProcess {
         OpenFile openFile = UserKernel.fileSystem.open(fileName, true);
         if (openFile != null) {
             if (fileDescriptorsList.size() > 0) {
-                System.out.println("<DEBUGGING> FILE DESCRIPTOR LIST WILL BE: " + fileDescriptorsList.remove(0));
+                //System.out.println("<DEBUGGING> FILE DESCRIPTOR LIST WILL BE: " + fileDescriptorsList.remove(0));
                 fileDescriptor = fileDescriptorsList.remove(0);
             } else {
                 System.out.println("<DEBUGGING CREAT> OPENED FILE WITH FILE DESCRIPTOR: " + fileDescriptorKey);
@@ -383,7 +383,7 @@ public class UserProcess {
      * Handle the open(name) system call
      */
    private int handleOpen(int filePointer){
-       System.out.println("<OPEN> STARTED handleOpen");
+       System.out.println("<OPEN> STARTED handleOpen at: " + filePointer);
        // 256 as is the max length of strings to be passed
        String fileName = readVirtualMemoryString(filePointer, 256);
        OpenFile openFile = UserKernel.fileSystem.open(fileName, false);
@@ -391,7 +391,7 @@ public class UserProcess {
        //Check if the file exists
        if (openFile != null){
             if (fileDescriptorsList.size() > 0 ) {
-                System.out.println("<DEBUGGING> FILE DESCRIPTOR LIST WILL BE: " + fileDescriptorsList.remove(0));
+                //System.out.println("<DEBUGGING> FILE DESCRIPTOR LIST WILL BE: " + fileDescriptorsList.remove(0));
                 fileDescriptor = fileDescriptorsList.remove(0);
             } else {
                 System.out.println("<DEBUGGING OPEN> OPENED FILE WITH FILE DESCRIPTOR: " + fileDescriptorKey);
@@ -414,10 +414,10 @@ public class UserProcess {
         System.out.println("<READ> FD: " + fileDescriptor + " BUFFER: " + bufferSize + " COUNT: " + count);
         if (fileDescriptorTable.containsKey(fileDescriptor)){
             OpenFile file = fileDescriptorTable.get(fileDescriptor);
-            byte[] fileBuffer = new byte[bufferSize];
+            byte[] fileBuffer = new byte[count];
             int position = file.tell();
-            //read(byte[] buf, int offset, int length)
-            bytesReaded = file.read(fileBuffer, 0, count);
+            //read(int position, byte[] buf, int offset, int length)
+            bytesReaded = file.read(position, fileBuffer, 0, count);
             /* On success, the number of bytes read is returned. If the file descriptor
             refers to a file on disk, the file position is advanced by this number.*/
             if (bytesReaded > -1){
@@ -524,7 +524,7 @@ public class UserProcess {
      * @return	the value to be returned to the user.
      */
     public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
-        System.out.println("<DEBUGGING> PARAMS: |a0->" + a0 +" |a1-> " + a1 + " |a2-> " + a2 + " |a3-> " +a3);
+        //System.out.println("<DEBUGGING> PARAMS: |a0->" + a0 +" |a1-> " + a1 + " |a2-> " + a2 + " |a3-> " +a3);
         System.out.println("<DEBUGGING> Syscall is: " + syscall);
         switch (syscall) {
         case syscallHalt:
@@ -539,6 +539,9 @@ public class UserProcess {
             return  handleWrite(a0, a1, a2);
         case syscallClose:
             return handleClose(a0);
+        case syscallExit:
+            //System.out.println("FILE DESCRIPTOR TABLE:" + fileDescriptorTable);
+            return 0;
         default:
             Lib.debug(dbgProcess, "Unknown syscall");
             Lib.assertNotReached("Unknown system call!");
