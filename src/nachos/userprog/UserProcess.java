@@ -1,5 +1,6 @@
 package nachos.userprog;
 
+import com.sun.xml.internal.ws.util.StringUtils;
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
@@ -360,7 +361,16 @@ public class UserProcess {
         int fileDescriptor;
         System.out.println("<CREAT> STARTED handleCreat");
         String fileName = readVirtualMemoryString(filePointer, 256);
-        OpenFile openFile = UserKernel.fileSystem.open(fileName, true);
+        //BULLET PROOF for filenames with whitespaces.
+        if (fileName.contains(WHITESPACE)) {
+            fileName = fileName.replaceAll("\\s+", "");
+        }
+        // open(String name, boolean create) create -> true for creation
+        OpenFile openFile = null;
+        if (UserKernel.fileSystem != null) {
+            openFile = UserKernel.fileSystem.open(fileName, true);
+        }
+        System.out.println("<DEBUGGING> OPENFILE: " + openFile + " FILE NAME: " + fileName);
         if (openFile != null) {
             if (fileDescriptorsList.size() > 0) {
                 //System.out.println("<DEBUGGING> FILE DESCRIPTOR LIST WILL BE: " + fileDescriptorsList.remove(0));
@@ -478,9 +488,16 @@ public class UserProcess {
      * Handle unlink(name) System Call
      */
     private int handleUnlink(int fileNameAddr){
+        int fileDescriptor = 0;
         String fileName = readVirtualMemoryString(fileNameAddr, 256);
-        System.out.println("UserProcess -> handleUnlink -> fileName: "+fileName);
-        return -1;
+        if (fileName != null ) {
+            UserKernel.fileSystem.remove(fileName);
+            System.out.println(" Unlink File: " + fileName);
+        } else {
+            System.out.println("Error in Unlink System Call, file not found or is null: ");
+            fileDescriptor = -1;
+        }
+        return fileDescriptor;
     }
 
     private static final int
@@ -539,6 +556,8 @@ public class UserProcess {
             return  handleWrite(a0, a1, a2);
         case syscallClose:
             return handleClose(a0);
+        case syscallUnlink:
+            return handleUnlink(a0);
         case syscallExit:
             //System.out.println("FILE DESCRIPTOR TABLE:" + fileDescriptorTable);
             return 0;
@@ -595,13 +614,14 @@ public class UserProcess {
 	
     private static final int pageSize = Processor.pageSize;
     private static final char dbgProcess = 'a';
+    private static final String WHITESPACE = " ";
 
     /** List of the file descriptors used as keys on the map **/
 
     private List<Integer> fileDescriptorsList = new ArrayList<Integer>();
 
     /** Dynamic file descriptor to be added on the list **/
-
+    /** File descriptors 0 and 1 are used for standard input and output **/
     private int fileDescriptorKey = 2;
 
     /** File Descriptor Table Structure **/
