@@ -218,6 +218,10 @@ public class UserProcess {
         int final_vpn = Processor.pageFromAddress(vaddr+length);
         int offset_vpn = Processor.offsetFromAddress(vaddr);
 
+        for(int i=start_vpn; i<final_vpn; i++){
+            if(pageTable[i].readOnly) return 0;
+        }
+
         int ppn = pageTable[start_vpn].ppn;
         int paddr = Processor.makeAddress(ppn, offset_vpn);
 
