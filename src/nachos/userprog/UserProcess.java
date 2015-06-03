@@ -158,14 +158,14 @@ public class UserProcess {
                 ppn = pageTable[i].ppn;
                 paddr = Processor.makeAddress(ppn, 0);
                 amount = pageSize;
-                System.arraycopy(data, offset+bytesTransferred, memory, paddr, amount);
+                System.arraycopy(memory, paddr, data, offset+bytesTransferred, amount);
                 bytesTransferred += amount;
             }
 
             ppn = pageTable[final_vpn].ppn;
             paddr = Processor.makeAddress(ppn, 0);
             amount = length - bytesTransferred;
-            System.arraycopy(data, offset+bytesTransferred, memory, paddr, amount);
+            System.arraycopy(memory, paddr, data, offset+bytesTransferred, amount);
             bytesTransferred += amount;
         }
 
@@ -213,7 +213,33 @@ public class UserProcess {
 
 	byte[] memory = Machine.processor().getMemory();
 
-    int amount = 0;
+        int bytesTransferred = 0;
+        int start_vpn = Processor.pageFromAddress(vaddr);
+        int final_vpn = Processor.pageFromAddress(vaddr+length);
+        int offset_vpn = Processor.offsetFromAddress(vaddr);
+
+        int ppn = pageTable[start_vpn].ppn;
+        int paddr = Processor.makeAddress(ppn, offset_vpn);
+
+        int amount = Math.min(length, pageSize-offset_vpn);
+        System.arraycopy(data, offset, memory, paddr, amount);
+        bytesTransferred += amount;
+
+        if(start_vpn != final_vpn){
+            for(int i=start_vpn+1; i<final_vpn-1; i++){
+                ppn = pageTable[i].ppn;
+                paddr = Processor.makeAddress(ppn, 0);
+                amount = pageSize;
+                System.arraycopy(data, offset+bytesTransferred, memory, paddr, amount);
+                bytesTransferred += amount;
+            }
+
+            ppn = pageTable[final_vpn].ppn;
+            paddr = Processor.makeAddress(ppn, 0);
+            amount = length - bytesTransferred;
+            System.arraycopy(data, offset+bytesTransferred, memory, paddr, amount);
+            bytesTransferred += amount;
+        }
 
 /*
 	// for now, just assume that virtual addresses equal physical addresses
@@ -223,7 +249,7 @@ public class UserProcess {
 	int amount = Math.min(length, memory.length-vaddr);
 	System.arraycopy(data, offset, memory, vaddr, amount);*/
 
-	return amount;
+	return bytesTransferred;
     }
 
     /**
