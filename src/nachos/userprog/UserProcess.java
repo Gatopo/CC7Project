@@ -1,9 +1,11 @@
 package nachos.userprog;
 
+import com.sun.xml.internal.ws.util.StringUtils;
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
 
+import javax.jws.soap.SOAPBinding;
 import java.io.EOFException;
 import java.util.ArrayList;
 import java.util.Hashtable;
