@@ -427,19 +427,39 @@ public class KThread {
      * Tests whether this module is working.
      */
     public static void selfTest() {
-	/*Lib.debug(dbgThread, "Enter KThread.selfTest");
-	
-	new KThread(new PingTest(1)).setName("forked thread").fork();
-	new PingTest(0).run();*/
-    Lib.debug(dbgThread, "Enter KThread.selfTest");
-    cero = new KThread(new PingTest(0)).setName("forked thread0");
-    cero.fork();
-    uno = new KThread(new PingTest(1)).setName("forked thread1");
-    uno.fork();
-    dos = new KThread(new PingTest(2)).setName("forked thread2");
-    dos.fork();
-    tres = new KThread(new PingTest(3)).setName("forked thread3");
-    tres.fork();
+        /*Lib.debug(dbgThread, "Enter KThread.selfTest");
+
+        new KThread(new PingTest(1)).setName("forked thread").fork();
+        new PingTest(0).run();
+        Lib.debug(dbgThread, "Enter KThread.selfTest");
+        cero = new KThread(new PingTest(0)).setName("forked thread0");
+        cero.fork();
+        uno = new KThread(new PingTest(1)).setName("forked thread1");
+        uno.fork();
+        dos = new KThread(new PingTest(2)).setName("forked thread2");
+        dos.fork();
+        tres = new KThread(new PingTest(3)).setName("forked thread3");
+        tres.fork();*/
+
+        PriorityScheduler priorityScheduler = new PriorityScheduler();
+
+        KThread threadPHIGH = new KThread(new PingTest(7)).setName("HPT_7");
+        threadPHIGH.schedulingState = priorityScheduler.new ThreadState(threadPHIGH);
+        ((PriorityScheduler.ThreadState) threadPHIGH.schedulingState).setPriority(7);
+
+        KThread threadMED = new KThread(new PingTest(7)).setName("HPT_5");
+        threadMED.schedulingState = priorityScheduler.new ThreadState(threadMED);
+        ((PriorityScheduler.ThreadState) threadMED.schedulingState).setPriority(5);
+
+        KThread threadLOW = new KThread(new PingTest(7)).setName("HPT_3");
+        threadLOW.schedulingState = priorityScheduler.new ThreadState(threadLOW);
+        ((PriorityScheduler.ThreadState) threadLOW.schedulingState).setPriority(3);
+
+        threadLOW.fork();
+        threadMED.fork();
+        threadPHIGH.fork();
+        threadLOW.join();
+
     }
 
     private static final char dbgThread = 't';
