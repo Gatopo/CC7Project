@@ -2,9 +2,7 @@ package nachos.threads;
 
 import nachos.machine.*;
 
-import java.util.TreeSet;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.*;
 
 /**
  * A scheduler that chooses threads based on their priorities.
@@ -140,12 +138,37 @@ public class PriorityScheduler extends Scheduler {
             getThreadState(thread).acquire(this);
         }
 
+        public int getEffectivePriority(){
+            // Checks if there is a need to transfer the priority
+            if (!transferPriority) {
+                return priorityMinimum;
+            }
+            //UPdates the priority if needed.
+            if (priorityUpdate) {
+                effective = priorityMinimum;
+                for (ThreadState ts : threadStatesWQ) {
+                    effective = Math.max(effective, ts.getEffectivePriority());
+                }
+            }
+            return effective;
+        }
+
+
         public KThread nextThread() {
             Lib.assertTrue(Machine.interrupt().disabled());
             // implement me
             return null;
         }
 
+        public void setPriorityUpdate(){
+            if (!transferPriority)
+                return;
+            else{
+                priorityUpdate = true;
+                if (waitingTS != null)
+                    waitingTS.setPriorityUpdate();
+            }
+        }
         /**
          * Return the next thread that <tt>nextThread()</tt> would return,
          * without modifying the state of this queue.
@@ -167,7 +190,16 @@ public class PriorityScheduler extends Scheduler {
          * <tt>true</tt> if this queue should transfer priority from waiting
          * threads to the owning thread.
          */
+
+        // Wait que of KThreads from the ThreadState.
+        protected List<ThreadState> threadStatesWQ = new ArrayList<ThreadState>();
+
         public boolean transferPriority;
+        protected ThreadState waitingTS;
+        protected int effective;
+        //protected ArrayList<ThreadState> waitingQueue = new ArrayList<ThreadState>();
+        protected int queuePriority;
+        protected boolean priorityUpdate;
     }
 
     /**
@@ -205,7 +237,16 @@ public class PriorityScheduler extends Scheduler {
          * @return	the effective priority of the associated thread.
          */
         public int getEffectivePriority() {
-            // implement me
+            // Get the priority of the ThreadState of the KThread
+            int isEffective = getPriority();
+            if (needUpdate) {
+                for (PriorityQueue priorityQueue : processWaitQueue) {
+                    isEffective = priorityQueue.getEffectivePriority() > isEffective ?
+                            isEffective : priorityQueue.getEffectivePriority();
+
+                }
+            }
+
             return priority;
         }
 
@@ -214,13 +255,30 @@ public class PriorityScheduler extends Scheduler {
          *
          * @param	priority	the new priority.
          */
-        public void setPriority(int priority) {
+        /*public void setPriority(int priority) {
             if (this.priority == priority)
             return;
 
             this.priority = priority;
 
             // implement me
+        }*/
+
+        public void setPriority(int priority) {
+            if (this.priority == priority)
+                return;
+
+            this.priority = priority;
+
+            setPriorityUpdate();
+        }
+
+        public void setPriorityUpdate(){
+            if (!priorityUpdate) {
+                priorityUpdate = true;
+                for (PriorityQueue queue : processWaitQueue)
+                    queue.setPriorityUpdate();
+            }
         }
 
         /**
@@ -256,6 +314,11 @@ public class PriorityScheduler extends Scheduler {
         /** The thread with which this object is associated. */
         protected KThread thread;
         /** The priority of the associated thread. */
-        protected int priority;
+        protected int priority = priorityDefault;
+        // Stablish the initial effectivePrioerity as -1
+        protected int effectivePriority = -1;
+        protected List<PriorityQueue> processWaitQueue = new ArrayList<PriorityQueue>();
+        protected boolean needUpdate = false;
+        protected boolean priorityUpdate;
     }
 }

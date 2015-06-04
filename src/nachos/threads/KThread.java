@@ -476,7 +476,7 @@ public class KThread {
     private static int numCreated = 0;
 
     /** List of joined KThreads */
-    private ArrayList<KThread> joinedKThreads = new ArrayList<KThread>();
+    protected ArrayList<KThread> joinedKThreads = new ArrayList<KThread>();
 
     private static ThreadQueue readyQueue = null;
     private static KThread currentThread = null;
