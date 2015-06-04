@@ -135,6 +135,12 @@ public class PriorityScheduler extends Scheduler {
 
         public void acquire(KThread thread) {
             Lib.assertTrue(Machine.interrupt().disabled());
+            /**
+             * Return the scheduling state of the specified thread.
+             *
+             * @param	thread	the thread whose scheduling state to return.
+             * @return	the scheduling state of the specified thread.
+             */
             getThreadState(thread).acquire(this);
         }
 
@@ -143,7 +149,7 @@ public class PriorityScheduler extends Scheduler {
             if (!transferPriority) {
                 return priorityMinimum;
             }
-            //UPdates the priority if needed.
+            //Updates the priority if needed.
             if (priorityUpdate) {
                 effective = priorityMinimum;
                 for (ThreadState ts : threadStatesWQ) {
@@ -156,7 +162,15 @@ public class PriorityScheduler extends Scheduler {
 
         public KThread nextThread() {
             Lib.assertTrue(Machine.interrupt().disabled());
-            // implement me
+            if (waitingTS != null)
+                waitingTS.acquiredPQ.remove(this);
+
+            if(!threadStatesWQ.isEmpty()){
+                ThreadState threadState = pickNextThread();
+                threadStatesWQ.remove(threadState);
+                threadState.acquire(this);
+                return threadState.thread;
+            }
             return null;
         }
 
@@ -177,28 +191,30 @@ public class PriorityScheduler extends Scheduler {
          *		return.
          */
         protected ThreadState pickNextThread() {
-            // implement me
-            return null;
+            ThreadState priorityTS = null;
+            // Check the threadstate with the highest priority.
+            for(ThreadState threadState : threadStatesWQ) {
+                if (priorityTS.getPriority() < threadState.getPriority() ) {
+                    priorityTS = threadState;
+                }
+            }
+            return priorityTS;
         }
 
         public void print() {
             Lib.assertTrue(Machine.interrupt().disabled());
-            // implement me (if you want)
+            System.out.println("<DEBUG PQ>");
         }
 
         /**
          * <tt>true</tt> if this queue should transfer priority from waiting
          * threads to the owning thread.
          */
-
+        public boolean transferPriority;
         // Wait que of KThreads from the ThreadState.
         protected List<ThreadState> threadStatesWQ = new ArrayList<ThreadState>();
-
-        public boolean transferPriority;
         protected ThreadState waitingTS;
         protected int effective;
-        //protected ArrayList<ThreadState> waitingQueue = new ArrayList<ThreadState>();
-        protected int queuePriority;
         protected boolean priorityUpdate;
     }
 
@@ -240,7 +256,7 @@ public class PriorityScheduler extends Scheduler {
             // Get the priority of the ThreadState of the KThread
             int isEffective = getPriority();
             if (needUpdate) {
-                for (PriorityQueue priorityQueue : processWaitQueue) {
+                for (PriorityQueue priorityQueue : waitingPQ) {
                     isEffective = priorityQueue.getEffectivePriority() > isEffective ?
                             isEffective : priorityQueue.getEffectivePriority();
 
@@ -250,20 +266,18 @@ public class PriorityScheduler extends Scheduler {
             return priority;
         }
 
+        /*public int mapPriority(List<ThreadState> listOfTS) {
+            if (listOfTS.contains(this)) {
+                return effectivePriority;
+            }
+            effectivePriority = priority;
+        }*/
+
         /**
          * Set the priority of the associated thread to the specified value.
          *
          * @param	priority	the new priority.
          */
-        /*public void setPriority(int priority) {
-            if (this.priority == priority)
-            return;
-
-            this.priority = priority;
-
-            // implement me
-        }*/
-
         public void setPriority(int priority) {
             if (this.priority == priority)
                 return;
@@ -276,10 +290,13 @@ public class PriorityScheduler extends Scheduler {
         public void setPriorityUpdate(){
             if (!priorityUpdate) {
                 priorityUpdate = true;
-                for (PriorityQueue queue : processWaitQueue)
+                for (PriorityQueue queue : waitingPQ)
+                    // Updates the priority of this PQ for each element on the list.
                     queue.setPriorityUpdate();
             }
         }
+
+
 
         /**
          * Called when <tt>waitForAccess(thread)</tt> (where <tt>thread</tt> is
@@ -294,7 +311,8 @@ public class PriorityScheduler extends Scheduler {
          * @see	nachos.threads.ThreadQueue#waitForAccess
          */
         public void waitForAccess(PriorityQueue waitQueue) {
-            // implement me
+            waitingPQ.add(waitQueue);
+            acquiredPQ.remove(waitQueue);
         }
 
         /**
@@ -308,7 +326,9 @@ public class PriorityScheduler extends Scheduler {
          * @see	nachos.threads.ThreadQueue#nextThread
          */
         public void acquire(PriorityQueue waitQueue) {
-            // implement me
+            acquiredPQ.add(waitQueue);
+            waitingPQ.remove(waitQueue);
+            setPriorityUpdate();
         }
 
         /** The thread with which this object is associated. */
@@ -317,7 +337,10 @@ public class PriorityScheduler extends Scheduler {
         protected int priority = priorityDefault;
         // Stablish the initial effectivePrioerity as -1
         protected int effectivePriority = -1;
-        protected List<PriorityQueue> processWaitQueue = new ArrayList<PriorityQueue>();
+        // Queue for process in the WaitQueue
+        protected List<PriorityQueue> waitingPQ = new ArrayList<PriorityQueue>();
+        // QUeue for process that where acuqired by acquire(waitQueue)
+        public List<PriorityQueue> acquiredPQ = new ArrayList<PriorityQueue>();
         protected boolean needUpdate = false;
         protected boolean priorityUpdate;
     }
