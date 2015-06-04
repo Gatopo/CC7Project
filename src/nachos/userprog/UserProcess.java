@@ -116,7 +116,7 @@ public class UserProcess {
      * @return	the number of bytes successfully transferred.
      */
     public int readVirtualMemory(int vaddr, byte[] data) {
-	return readVirtualMemory(vaddr, data, 0, data.length);
+        return readVirtualMemory(vaddr, data, 0, data.length);
     }
 
     /**
@@ -138,15 +138,44 @@ public class UserProcess {
 	Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
 
 	byte[] memory = Machine.processor().getMemory();
-	
+
+        int bytesTransferred = 0;
+        int start_vpn = Processor.pageFromAddress(vaddr);
+        int final_vpn = Processor.pageFromAddress(vaddr+length);
+        int offset_vpn = Processor.offsetFromAddress(vaddr);
+
+        int ppn = pageTable[start_vpn].ppn;
+        int paddr = Processor.makeAddress(ppn, offset_vpn);
+
+        int amount = Math.min(length, pageSize-offset_vpn);
+        System.arraycopy(memory, paddr, data, offset, amount);
+        bytesTransferred += amount;
+
+        if(start_vpn != final_vpn){
+            for(int i=start_vpn+1; i<final_vpn-1; i++){
+                ppn = pageTable[i].ppn;
+                paddr = Processor.makeAddress(ppn, 0);
+                amount = pageSize;
+                System.arraycopy(memory, paddr, data, offset+bytesTransferred, amount);
+                bytesTransferred += amount;
+            }
+
+            ppn = pageTable[final_vpn].ppn;
+            paddr = Processor.makeAddress(ppn, 0);
+            amount = length - bytesTransferred;
+            System.arraycopy(memory, paddr, data, offset+bytesTransferred, amount);
+            bytesTransferred += amount;
+        }
+        /*
 	// for now, just assume that virtual addresses equal physical addresses
 	if (vaddr < 0 || vaddr >= memory.length)
 	    return 0;
 
 	int amount = Math.min(length, memory.length-vaddr);
 	System.arraycopy(memory, vaddr, data, offset, amount);
+	*/
 
-	return amount;
+	return bytesTransferred;
     }
 
     /**
@@ -181,15 +210,49 @@ public class UserProcess {
 	Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
 
 	byte[] memory = Machine.processor().getMemory();
-	
+
+        int bytesTransferred = 0;
+        int start_vpn = Processor.pageFromAddress(vaddr);
+        int final_vpn = Processor.pageFromAddress(vaddr+length);
+        int offset_vpn = Processor.offsetFromAddress(vaddr);
+
+        for(int i=start_vpn; i<final_vpn; i++){
+            if(pageTable[i].readOnly) return 0;
+        }
+
+        int ppn = pageTable[start_vpn].ppn;
+        int paddr = Processor.makeAddress(ppn, offset_vpn);
+
+        int amount = Math.min(length, pageSize-offset_vpn);
+        System.arraycopy(data, offset, memory, paddr, amount);
+        bytesTransferred += amount;
+
+        if(start_vpn != final_vpn){
+            for(int i=start_vpn+1; i<final_vpn-1; i++){
+                ppn = pageTable[i].ppn;
+                paddr = Processor.makeAddress(ppn, 0);
+                amount = pageSize;
+                System.arraycopy(data, offset+bytesTransferred, memory, paddr, amount);
+                bytesTransferred += amount;
+            }
+
+            ppn = pageTable[final_vpn].ppn;
+            paddr = Processor.makeAddress(ppn, 0);
+            amount = length - bytesTransferred;
+            System.arraycopy(data, offset+bytesTransferred, memory, paddr, amount);
+            bytesTransferred += amount;
+        }
+
+        /*
 	// for now, just assume that virtual addresses equal physical addresses
 	if (vaddr < 0 || vaddr >= memory.length)
 	    return 0;
 
 	int amount = Math.min(length, memory.length-vaddr);
 	System.arraycopy(data, offset, memory, vaddr, amount);
+	*/
 
-	return amount;
+	return bytesTransferred;
     }
 
     /**
