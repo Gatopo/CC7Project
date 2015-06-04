@@ -4,6 +4,8 @@ import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
 
+import java.util.PriorityQueue;
+
 /**
  * A kernel that can support multiple user processes.
  */
@@ -27,6 +29,14 @@ public class UserKernel extends ThreadedKernel {
 	Machine.processor().setExceptionHandler(new Runnable() {
 		public void run() { exceptionHandler(); }
 	    });
+
+        availablePhysicalPages = new PriorityQueue<Integer>();
+        numAvailablePhyPages = Machine.processor().getNumPhysPages();
+        for(int i=0; i<UserKernel.numAvailablePhyPages; i++){
+            availablePhysicalPages.add(i);
+        }
+        pagesLock = new Lock();
+        processFileTable = new FileTable();
     }
 
     /**
@@ -113,4 +123,10 @@ public class UserKernel extends ThreadedKernel {
 
     // dummy variables to make javac smarter
     private static Coff dummy1 = null;
+
+    protected static PriorityQueue<Integer> availablePhysicalPages;
+    private static int numAvailablePhyPages = 0;
+    protected static Lock pagesLock;
+
+    public static FileTable processFileTable;
 }

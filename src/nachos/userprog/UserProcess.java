@@ -4,6 +4,7 @@ import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
 
+import javax.jws.soap.SOAPBinding;
 import java.io.EOFException;
 import java.util.ArrayList;
 import java.util.Hashtable;
@@ -366,9 +367,17 @@ public class UserProcess {
 
 	    for (int i=0; i<section.getLength(); i++) {
 		int vpn = section.getFirstVPN()+i;
-
+            TranslationEntry entry = pageTable[vpn];
+            UserKernel.pagesLock.acquire();
+            int freePageNumber = UserKernel.availablePhysicalPages.poll();
+            UserKernel.pagesLock.release();
+            entry.ppn = freePageNumber;
+            entry.valid = true;
+            entry.readOnly = section.isReadOnly();
+            section.loadPage(i, freePageNumber);
+/*
 		// for now, just assume virtual addresses=physical addresses
-		section.loadPage(i, vpn);
+		section.loadPage(i, vpn);*/
 	    }
 	}
 	
@@ -379,6 +388,15 @@ public class UserProcess {
      * Release any resources allocated by <tt>loadSections()</tt>.
      */
     protected void unloadSections() {
+        TranslationEntry entry;
+        for(int i=0; i < pageTable.length; i++){
+            entry = pageTable[i];
+            if(entry.valid){
+                UserKernel.pagesLock.acquire();
+                UserKernel.availablePhysicalPages.add(entry.ppn);
+                UserKernel.pagesLock.release();
+            }
+        }
     }    
 
     /**
