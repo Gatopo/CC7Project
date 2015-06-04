@@ -25,7 +25,9 @@ public class UserKernel extends ThreadedKernel {
 	super.initialize(args);
 
 	console = new SynchConsole(Machine.console());
-	
+
+        processIDSem = new Semaphore(1);
+
 	Machine.processor().setExceptionHandler(new Runnable() {
 		public void run() { exceptionHandler(); }
 	    });
@@ -129,4 +131,7 @@ public class UserKernel extends ThreadedKernel {
     protected static Lock pagesLock;
 
     public static FileTable processFileTable;
+
+    protected static Semaphore processIDSem;
+    protected static int kernelProcessID = 0;
 }

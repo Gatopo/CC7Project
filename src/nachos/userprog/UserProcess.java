@@ -7,8 +7,10 @@ import nachos.userprog.*;
 
 import javax.jws.soap.SOAPBinding;
 import java.io.EOFException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -28,6 +30,12 @@ public class UserProcess {
      * Allocate a new process.
      */
     public UserProcess() {
+
+        UserKernel.processIDSem.P();
+        processID = UserKernel.kernelProcessID;
+        UserKernel.kernelProcessID++;
+        UserKernel.processIDSem.V();
+
 	int numPhysPages = Machine.processor().getNumPhysPages();
 	pageTable = new TranslationEntry[numPhysPages];
     fileDescriptorTable.put(0, UserKernel.console.openForReading());
@@ -581,6 +589,70 @@ public class UserProcess {
         return fileDescriptor;
     }
 
+    /**
+     * Handle the exec() system call.
+     */
+    private int handleExec(int name, int argc, int argv){
+        String[] args = new String[argc];
+
+        for (int i=0; i<argc; i++) {
+            byte[] argPoint = new byte[4];
+            readVirtualMemory(argv+i*4, argPoint);
+
+            args[i] = readVirtualMemoryString(Lib.bytesToInt(argPoint,0), 256);
+        }
+        UserProcess child = new UserProcess();
+        childList.add(child);
+        String processName = readVirtualMemoryString(name,256);
+        boolean ret = child.execute(processName, args);
+        if(!ret) return -1;
+        return child.processID;
+
+    }
+
+    private int handleJoin(int pid, int status){
+        int state = -1;
+        int index = 0;
+        for(UserProcess child: childList){
+            if(child.processID == pid){
+                parents.add(this);
+                child.processThread.join();
+                break;
+            }
+        }
+        return state;
+    }
+
+    private void handleExit(int status){
+        unloadSections();
+        ArrayList<Integer> descriptorKeys = new ArrayList<Integer>();
+        for(Integer key: fileDescriptorTable.keySet()){
+            descriptorKeys.add(key);
+        }
+        for(Integer fileDescritor : descriptorKeys){
+            handleClose(fileDescritor);
+        }
+        if(processID == 0){
+            UserKernel.kernel.terminate();
+        }else{
+            for(UserProcess parent: parents){
+                parent.writeForJoin(status);
+            }
+        }
+        UThread.finish();
+    }
+
+    private void writeForJoin(int status){
+        byte[] data = ByteBuffer.allocate(4).putInt(status).array();
+        byte[] intValue = new byte[4];
+        int cont = 3;
+        for(int i=0; i<4; i++){
+            intValue[i] = data[cont];
+            cont--;
+        }
+        writeVirtualMemory(joinAddr, intValue, 0, intValue.length);
+    }
+
     private static final int
     syscallHalt = 0,
 	syscallExit = 1,
@@ -639,6 +711,10 @@ public class UserProcess {
             return handleClose(a0);
         case syscallUnlink:
             return handleUnlink(a0);
+        case syscallExec:
+            return handleExec(a0, a1, a2);
+        case syscallJoin:
+             return handleJoin(a0, a1);
         case syscallExit:
             //System.out.println("FILE DESCRIPTOR TABLE:" + fileDescriptorTable);
             return 0;
@@ -708,5 +784,16 @@ public class UserProcess {
     /** File Descriptor Table Structure **/
 
     private Hashtable<Integer, OpenFile> fileDescriptorTable = new Hashtable<Integer, OpenFile>();
+
+    private LinkedList<UserProcess> childList = new LinkedList<UserProcess>();
+
+    private int processID;
+
+    private Lock sectionLock = new Lock();
+    private Condition2 joinCondition = new Condition2(sectionLock);
+    private LinkedList<UserProcess> parents = new LinkedList<UserProcess>();
+    private int joinAddr;
+    protected UThread processThread;
+
 
 }
