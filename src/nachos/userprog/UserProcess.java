@@ -1,10 +1,15 @@
 package nachos.userprog;
 
+import com.sun.xml.internal.ws.util.StringUtils;
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
 
+import javax.jws.soap.SOAPBinding;
 import java.io.EOFException;
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.List;
 
 /**
  * Encapsulates the state of a user process that is not contained in its
@@ -25,6 +30,8 @@ public class UserProcess {
     public UserProcess() {
 	int numPhysPages = Machine.processor().getNumPhysPages();
 	pageTable = new TranslationEntry[numPhysPages];
+    fileDescriptorTable.put(0, UserKernel.console.openForReading());
+    fileDescriptorTable.put(1, UserKernel.console.openForWriting());
 	for (int i=0; i<numPhysPages; i++)
 	    pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
     }
@@ -49,6 +56,7 @@ public class UserProcess {
      * @return	<tt>true</tt> if the program was successfully executed.
      */
     public boolean execute(String name, String[] args) {
+        //System.out.println("<DEBUGGING> NAME IS: " + name);
 	if (!load(name, args))
 	    return false;
 	
@@ -132,15 +140,44 @@ public class UserProcess {
 	Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
 
 	byte[] memory = Machine.processor().getMemory();
-	
+
+        int bytesTransferred = 0;
+        int start_vpn = Processor.pageFromAddress(vaddr);
+        int final_vpn = Processor.pageFromAddress(vaddr+length);
+        int offset_vpn = Processor.offsetFromAddress(vaddr);
+
+        int ppn = pageTable[start_vpn].ppn;
+        int paddr = Processor.makeAddress(ppn, offset_vpn);
+
+        int amount = Math.min(length, pageSize-offset_vpn);
+        System.arraycopy(memory, paddr, data, offset, amount);
+        bytesTransferred += amount;
+
+        if(start_vpn != final_vpn){
+            for(int i=start_vpn+1; i<final_vpn-1; i++){
+                ppn = pageTable[i].ppn;
+                paddr = Processor.makeAddress(ppn, 0);
+                amount = pageSize;
+                System.arraycopy(memory, paddr, data, offset+bytesTransferred, amount);
+                bytesTransferred += amount;
+            }
+
+            ppn = pageTable[final_vpn].ppn;
+            paddr = Processor.makeAddress(ppn, 0);
+            amount = length - bytesTransferred;
+            System.arraycopy(memory, paddr, data, offset+bytesTransferred, amount);
+            bytesTransferred += amount;
+        }
+
+        /*
 	// for now, just assume that virtual addresses equal physical addresses
 	if (vaddr < 0 || vaddr >= memory.length)
 	    return 0;
 
 	int amount = Math.min(length, memory.length-vaddr);
-	System.arraycopy(memory, vaddr, data, offset, amount);
+	System.arraycopy(memory, vaddr, data, offset, amount);*/
 
-	return amount;
+	return bytesTransferred;
     }
 
     /**
@@ -175,15 +212,48 @@ public class UserProcess {
 	Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
 
 	byte[] memory = Machine.processor().getMemory();
-	
+
+        int bytesTransferred = 0;
+        int start_vpn = Processor.pageFromAddress(vaddr);
+        int final_vpn = Processor.pageFromAddress(vaddr+length);
+        int offset_vpn = Processor.offsetFromAddress(vaddr);
+
+        for(int i=start_vpn; i<final_vpn; i++){
+            if(pageTable[i].readOnly) return 0;
+        }
+
+        int ppn = pageTable[start_vpn].ppn;
+        int paddr = Processor.makeAddress(ppn, offset_vpn);
+
+        int amount = Math.min(length, pageSize-offset_vpn);
+        System.arraycopy(data, offset, memory, paddr, amount);
+        bytesTransferred += amount;
+
+        if(start_vpn != final_vpn){
+            for(int i=start_vpn+1; i<final_vpn-1; i++){
+                ppn = pageTable[i].ppn;
+                paddr = Processor.makeAddress(ppn, 0);
+                amount = pageSize;
+                System.arraycopy(data, offset+bytesTransferred, memory, paddr, amount);
+                bytesTransferred += amount;
+            }
+
+            ppn = pageTable[final_vpn].ppn;
+            paddr = Processor.makeAddress(ppn, 0);
+            amount = length - bytesTransferred;
+            System.arraycopy(data, offset+bytesTransferred, memory, paddr, amount);
+            bytesTransferred += amount;
+        }
+
+/*
 	// for now, just assume that virtual addresses equal physical addresses
 	if (vaddr < 0 || vaddr >= memory.length)
 	    return 0;
 
 	int amount = Math.min(length, memory.length-vaddr);
-	System.arraycopy(data, offset, memory, vaddr, amount);
+	System.arraycopy(data, offset, memory, vaddr, amount);*/
 
-	return amount;
+	return bytesTransferred;
     }
 
     /**
@@ -198,9 +268,9 @@ public class UserProcess {
      */
     private boolean load(String name, String[] args) {
 	Lib.debug(dbgProcess, "UserProcess.load(\"" + name + "\")");
-	
-	OpenFile executable = ThreadedKernel.fileSystem.open(name, false);
-	if (executable == null) {
+
+        OpenFile executable = ThreadedKernel.fileSystem.open(name, false);
+        if (executable == null) {
 	    Lib.debug(dbgProcess, "\topen failed");
 	    return false;
 	}
@@ -346,9 +416,154 @@ public class UserProcess {
 	return 0;
     }
 
+    /**
+     * Handle the creat(name) system call
+     */
+    private int handleCreat(int filePointer){
+        int fileDescriptor;
+        System.out.println("<CREAT> STARTED handleCreat");
+        String fileName = readVirtualMemoryString(filePointer, 256);
+        //BULLET PROOF for filenames with whitespaces.
+        if (fileName.contains(WHITESPACE)) {
+            fileName = fileName.replaceAll("\\s+", "");
+        }
+        // open(String name, boolean create) create -> true for creation
+        OpenFile openFile = null;
+        if (UserKernel.fileSystem != null) {
+            openFile = UserKernel.fileSystem.open(fileName, true);
+        }
+        System.out.println("<DEBUGGING> OPENFILE: " + openFile + " FILE NAME: " + fileName);
+        if (openFile != null) {
+            if (fileDescriptorsList.size() > 0) {
+                //System.out.println("<DEBUGGING> FILE DESCRIPTOR LIST WILL BE: " + fileDescriptorsList.remove(0));
+                fileDescriptor = fileDescriptorsList.remove(0);
+            } else {
+                System.out.println("<DEBUGGING CREAT> OPENED FILE WITH FILE DESCRIPTOR: " + fileDescriptorKey);
+                fileDescriptor = fileDescriptorKey;
+                fileDescriptorKey++;
+            }
+            fileDescriptorTable.put(fileDescriptor ,openFile);
+        } else {
+            fileDescriptor = -1;
+            System.out.println("Error in Creat Syscall with file: " + fileName);
+
+        }
+        return fileDescriptor;
+    }
+
+    /**
+     * Handle the open(name) system call
+     */
+   private int handleOpen(int filePointer){
+       System.out.println("<OPEN> STARTED handleOpen at: " + filePointer);
+       // 256 as is the max length of strings to be passed
+       String fileName = readVirtualMemoryString(filePointer, 256);
+       OpenFile openFile = UserKernel.fileSystem.open(fileName, false);
+       int fileDescriptor;
+       //Check if the file exists
+       if (openFile != null){
+            if (fileDescriptorsList.size() > 0 ) {
+                //System.out.println("<DEBUGGING> FILE DESCRIPTOR LIST WILL BE: " + fileDescriptorsList.remove(0));
+                fileDescriptor = fileDescriptorsList.remove(0);
+            } else {
+                System.out.println("<DEBUGGING OPEN> OPENED FILE WITH FILE DESCRIPTOR: " + fileDescriptorKey);
+                fileDescriptor = fileDescriptorKey;
+                fileDescriptorKey++;
+            }
+            fileDescriptorTable.put(fileDescriptor ,openFile);
+        } else  {
+           fileDescriptor = -1;
+           System.out.println("Error in Open Syscall with file: " + fileName);
+       }
+        return fileDescriptor;
+   }
+
+    /**
+     * Handle the read(fileDescriptor, buffer, count) system call
+     */
+    private int handleRead(int fileDescriptor, int bufferSize, int count){
+        int bytesReaded;
+        System.out.println("<READ> FD: " + fileDescriptor + " BUFFER: " + bufferSize + " COUNT: " + count);
+        if (fileDescriptorTable.containsKey(fileDescriptor)){
+            OpenFile file = fileDescriptorTable.get(fileDescriptor);
+            byte[] fileBuffer = new byte[count];
+            int position = file.tell();
+            //read(int position, byte[] buf, int offset, int length)
+            bytesReaded = file.read(position, fileBuffer, 0, count);
+            /* On success, the number of bytes read is returned. If the file descriptor
+            refers to a file on disk, the file position is advanced by this number.*/
+            if (bytesReaded > -1){
+                file.seek(bytesReaded + position);
+                return writeVirtualMemory(bufferSize,fileBuffer, 0, bytesReaded);
+            }
+        } else {
+            System.out.println("Error in Syscall Read, file descriptor not found or file does not exist");
+            bytesReaded = -1;
+        }
+        return bytesReaded;
+    }
+
+    /**
+     * Handle the write(int fileDescriptor, void *buffer, int count) system call
+     */
+    private int handleWrite(int fileDescriptor, int bufferSize, int count){
+        System.out.println("<READ> FD: " + fileDescriptor + " BUFFER: " + bufferSize + " COUNT: " + count);
+        int writtenBytes;
+        if (fileDescriptorTable.containsKey(fileDescriptor)){
+            OpenFile file = fileDescriptorTable.get(fileDescriptor);
+            byte[] fileData = new byte[count];
+            int readeBytes = readVirtualMemory(bufferSize, fileData, 0, count);
+            int position = file.tell();
+            writtenBytes = file.write(fileData, 0, readeBytes);
+            if (writtenBytes > -1) {
+                file.seek(position+writtenBytes);
+            }
+        } else {
+            System.out.println("Error in Syscall Write, file descriptor not found or file does not exist");
+            writtenBytes = -1;
+        }
+        return writtenBytes;
+    }
+
+    /**
+     * Handle close(fileDescriptor) System Call
+     */
+    private int handleClose(int fileDescriptor) {
+        if (fileDescriptor > -1) {
+            if (fileDescriptorTable.containsKey(fileDescriptor)){
+                OpenFile file = fileDescriptorTable.get(fileDescriptor);
+                if (file != null) {
+                    file = fileDescriptorTable.remove(fileDescriptor);
+                    fileDescriptorsList.add(fileDescriptor);
+                    file.close();
+                }
+            } else {
+                System.out.println("Error in Syscall Close, file descriptor not found or file does not exist");
+                return -1;
+            }
+
+        }
+        return -1;
+    }
+
+    /**
+     * Handle unlink(name) System Call
+     */
+    private int handleUnlink(int fileNameAddr){
+        int fileDescriptor = 0;
+        String fileName = readVirtualMemoryString(fileNameAddr, 256);
+        if (fileName != null ) {
+            UserKernel.fileSystem.remove(fileName);
+            System.out.println(" Unlink File: " + fileName);
+        } else {
+            System.out.println("Error in Unlink System Call, file not found or is null: ");
+            fileDescriptor = -1;
+        }
+        return fileDescriptor;
+    }
 
     private static final int
-        syscallHalt = 0,
+    syscallHalt = 0,
 	syscallExit = 1,
 	syscallExec = 2,
 	syscallJoin = 3,
@@ -388,16 +603,31 @@ public class UserProcess {
      * @return	the value to be returned to the user.
      */
     public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
-	switch (syscall) {
-	case syscallHalt:
-	    return handleHalt();
-
-
-	default:
-	    Lib.debug(dbgProcess, "Unknown syscall " + syscall);
-	    Lib.assertNotReached("Unknown system call!");
-	}
-	return 0;
+        //System.out.println("<DEBUGGING> PARAMS: |a0->" + a0 +" |a1-> " + a1 + " |a2-> " + a2 + " |a3-> " +a3);
+        System.out.println("<DEBUGGING> Syscall is: " + syscall);
+        switch (syscall) {
+        case syscallHalt:
+            return handleHalt();
+        case syscallOpen:
+            return handleOpen(a0);
+        case syscallCreate:
+            return handleCreat(a0);
+        case syscallRead:
+            return handleRead(a0, a1, a2);
+        case syscallWrite:
+            return  handleWrite(a0, a1, a2);
+        case syscallClose:
+            return handleClose(a0);
+        case syscallUnlink:
+            return handleUnlink(a0);
+        case syscallExit:
+            //System.out.println("FILE DESCRIPTOR TABLE:" + fileDescriptorTable);
+            return 0;
+        default:
+            Lib.debug(dbgProcess, "Unknown syscall");
+            Lib.assertNotReached("Unknown system call!");
+	    }
+	    return 0;
     }
 
     /**
@@ -446,4 +676,18 @@ public class UserProcess {
 	
     private static final int pageSize = Processor.pageSize;
     private static final char dbgProcess = 'a';
+    private static final String WHITESPACE = " ";
+
+    /** List of the file descriptors used as keys on the map **/
+
+    private List<Integer> fileDescriptorsList = new ArrayList<Integer>();
+
+    /** Dynamic file descriptor to be added on the list **/
+    /** File descriptors 0 and 1 are used for standard input and output **/
+    private int fileDescriptorKey = 2;
+
+    /** File Descriptor Table Structure **/
+
+    private Hashtable<Integer, OpenFile> fileDescriptorTable = new Hashtable<Integer, OpenFile>();
+
 }

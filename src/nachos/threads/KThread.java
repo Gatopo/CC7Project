@@ -184,19 +184,22 @@ public class KThread {
      * delete this thread.
      */
     public static void finish() {
-	Lib.debug(dbgThread, "Finishing thread: " + currentThread.toString());
-	
-	Machine.interrupt().disable();
+        Lib.debug(dbgThread, "Finishing thread: " + currentThread.toString());
 
-	Machine.autoGrader().finishingCurrentThread();
+        Machine.interrupt().disable();
 
-	Lib.assertTrue(toBeDestroyed == null);
-	toBeDestroyed = currentThread;
+        while(currentThread.joinedKThreads.size() > 0){
+            KThread joinedThread = currentThread.joinedKThreads.remove(0);
+            joinedThread.ready();
+        }
+        Machine.autoGrader().finishingCurrentThread();
 
+        Lib.assertTrue(toBeDestroyed == null);
+        toBeDestroyed = currentThread;
 
-	currentThread.status = statusFinished;
-	
-	sleep();
+        currentThread.status = statusFinished;
+
+        sleep();
     }
 
     /**
@@ -280,7 +283,7 @@ public class KThread {
     /** Save the status so we do not sleep with interrupts disabled**/
     boolean status = Machine.interrupt().disable();
     if (this.status != statusFinished) {
-        joinedKThreads.add(this);
+        joinedKThreads.add(currentThread);
         this.sleep();
     }
     /*KThread waitingThread = currentThread;
@@ -401,18 +404,42 @@ public class KThread {
 
         public void run() {
             for (int i=0; i<5; i++) {
-            System.out.println("*** thread " + which + " looped " + i + " times");
-            if ((which == 1) && (i==0))
-                ThreadedKernel.alarm.waitUntil(1000);
-            if ((which == 1) && (i==1))
-                dos.join();
-            if ((which == 0) && (i==2))
-                dos.join();
-            if ((which == 2) && (i==3))
-                tres.join();
-            if ((which == 1) && (i==3))
-                dos.join();
-            currentThread.yield();
+                System.out.println("*** thread " + which + " looped " + i + " times, Tick:" + Machine.timer().getTime());
+                if ((which == 1) && (i==0))
+                    ThreadedKernel.alarm.waitUntil(1000);
+
+                if ((which == 1) && (i==1))
+                    dos.join();
+
+                if ((which == 0) && (i==2))
+                    dos.join();
+
+                if ((which == 2) && (i==3))
+                    tres.join();
+
+                if ((which == 1) && (i==3))
+                    dos.join();
+
+                currentThread.yield();
+
+                if (AlarmTest) {
+
+                    if ((which==2) && (i==0)) {
+
+                        long time=1080;
+                        System.out.println("** "+dos.getName()+" esperara al menos "+time+" ticks, despertara aprox. en "+(Machine.timer().getTime()+time));
+                        ThreadedKernel.alarm.waitUntil(time);
+
+                    }
+
+                    if ((which==3) && (i==1)) {
+
+                        long time=540;
+                        System.out.println("** "+tres.getName()+" esperara al menos "+time+" ticks, despertara aprox. en "+(Machine.timer().getTime()+time));
+                        ThreadedKernel.alarm.waitUntil(time);
+
+                    }
+                }
             }
         }
 
@@ -427,6 +454,8 @@ public class KThread {
 	
 	new KThread(new PingTest(1)).setName("forked thread").fork();
 	new PingTest(0).run();*/
+
+    /*
     Lib.debug(dbgThread, "Enter KThread.selfTest");
     cero = new KThread(new PingTest(0)).setName("forked thread0");
     cero.fork();
@@ -435,7 +464,17 @@ public class KThread {
     dos = new KThread(new PingTest(2)).setName("forked thread2");
     dos.fork();
     tres = new KThread(new PingTest(3)).setName("forked thread3");
-    tres.fork();
+    tres.fork();*/
+
+    /*
+        Communicator communicator = new Communicator();
+        communicator.selfTest();
+*/
+
+
+        Boat boat = new Boat();
+        //boat.selfTest();
+
     }
 
     private static final char dbgThread = 't';
@@ -484,4 +523,7 @@ public class KThread {
     public static KThread uno = null;
     public static KThread dos = null;
     public static KThread cero = null;
+
+    public static boolean AlarmTest = true;
+
 }
